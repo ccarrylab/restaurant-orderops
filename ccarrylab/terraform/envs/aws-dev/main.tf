@@ -11,12 +11,7 @@ module "aws_eks" {
 }
 
 module "observability" {
-  source        = "../../modules/observability-stack"
-  cluster_name  = module.aws_eks.cluster_name
+  source           = "../../modules/observability-stack"
+  cluster_name     = module.aws_eks.cluster_name
   cluster_endpoint = module.aws_eks.cluster_endpoint
-}
-
-module "castai_integration" {
-  source       = "../../modules/castai-eks-integration"
-  cluster_name = module.aws_eks.cluster_name
 }

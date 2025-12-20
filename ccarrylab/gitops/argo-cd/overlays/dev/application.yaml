@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ccarrylab-platform-dev
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<your-username>/ccarrylab.git
+    path: gitops/apps
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

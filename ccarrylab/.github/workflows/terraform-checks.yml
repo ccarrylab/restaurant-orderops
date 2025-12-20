@@ -39,5 +39,3 @@ jobs:
           terraform init -input=false
           terraform validate
           terraform plan -input=false
-
-      # Add tfsec/Checkov job here for DevSecOps scanning
