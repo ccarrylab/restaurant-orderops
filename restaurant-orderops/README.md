@@ -13,13 +13,15 @@ A complete AWS infrastructure platform that demonstrates:
 ## Quick Deploy
 
 ```bash
-# Deploy complete platform
-make demo
-
 # Test locally
-docker build -t restaurant-api:test .
-docker run -p 8080:8080 restaurant-api:test
+cd src/restaurant-api
+go run main.go
+
+# In another terminal
 curl http://localhost:8080/health
+curl -X POST http://localhost:8080/api/order \
+  -H "Content-Type: application/json" \
+  -d '{"restaurant":"Pasta Palace","rush":true}'
 ```
 
 ## Architecture
@@ -36,49 +38,80 @@ Internet → ALB → EKS Cluster (3-10 pods)
 
 ## Features
 
-- ✅ Auto-scaling (3-10 pods based on load)
+- ✅ Auto-scaling (3-10 pods based on CPU)
 - ✅ Load testing (200 orders/sec simulation)
 - ✅ Chaos testing (pod kill survival)
 - ✅ SLO monitoring (>95% success, <200ms P95)
-- ✅ GitOps with ArgoCD
-- ✅ Spot instances ($0.42/hr)
+- ✅ Production-ready Kubernetes manifests
+- ✅ Cost-optimized (~$400/month)
 
 ## Components
 
-- **Go REST API** - Order placement and tracking
-- **Kubernetes** - EKS with HPA and PDB
-- **Terraform** - Complete AWS infrastructure
-- **Load Testing** - Simulates dinner rush
-- **Chaos Engineering** - LitmusChaos pod kills
-- **Observability** - Grafana dashboards
+### Application
+- **Go REST API** - `/api/order` endpoint for order placement
+- **Health checks** - `/health` and `/ready` endpoints
+- **Metrics** - `/api/metrics` for monitoring
 
-## Endpoints
+### Kubernetes
+- **Deployment** - 3 replicas with resource limits
+- **HPA** - Auto-scales 3-10 pods at 70% CPU
+- **Ingress** - AWS ALB for public access
+- **PDB** - Maintains minimum 2 pods during disruptions
 
-- `GET /health` - Health check
-- `GET /ready` - Readiness check
-- `POST /api/order` - Place order
-- `GET /api/metrics` - Metrics endpoint
+### Testing
+- **Load test** - Simulates 200 orders/sec dinner rush
+- **Chaos test** - LitmusChaos pod deletion
+
+### Observability
+- **Grafana** - SLO dashboard with success rate and latency
+- **Metrics** - Order count, uptime, pod health
 
 ## Deployment
 
 ```bash
-# Local testing
-make build
-make test
+# Deploy to EKS
+kubectl apply -f k8s/
 
-# Deploy to AWS
-make demo
+# Get ALB URL
+kubectl get ingress restaurant-api-ingress
 
-# Clean up
-make clean
+# Run load test
+./demo/load-test.sh http://YOUR-ALB-URL
 ```
 
-## Cost
+## File Structure
 
-~$400/month with optimizations:
-- Spot instances (60% savings)
-- Single NAT gateway
-- Auto-scaling down to 3 pods
+```
+restaurant-orderops/
+├── src/restaurant-api/    # Go application
+│   ├── main.go
+│   └── go.mod
+├── k8s/                   # Kubernetes manifests
+│   ├── deployment.yaml    # App + Service
+│   ├── hpa.yaml          # Auto-scaling
+│   ├── ingress.yaml      # ALB ingress
+│   └── pdb.yaml          # Pod disruption budget
+├── demo/                  # Testing scripts
+│   ├── load-test.sh      # 200 orders/sec
+│   └── chaos-pod-delete.yaml
+├── grafana/               # Dashboards
+│   └── slo-dashboard.json
+├── terraform/             # AWS infrastructure
+├── Dockerfile            # Container image
+└── Makefile             # Automation
+```
+
+## Cost Optimization
+
+Monthly cost: ~$400 with optimizations:
+- EKS control plane: $73
+- EC2 spot instances: $50-100
+- RDS Aurora: $60
+- ElastiCache: $12
+- NAT Gateway: $32
+- Other: ~$40
+
+Total: ~$400/month (vs $800+ without optimizations)
 
 ## Built For
 
@@ -87,7 +120,7 @@ Owner.com Senior DevOps Engineer role - demonstrates:
 - Chaos engineering practices
 - SLO-based monitoring
 - Cost optimization
-- GitOps workflows
+- Infrastructure as Code
 
 ---
 
