@@ -1,0 +1,13 @@
+# Language detection
+*.go linguist-detectable=true
+*.go linguist-language=Go
+src/restaurant-api/* linguist-vendored=false
+
+# Terraform
+*.tf linguist-language=HCL
+*.tfvars linguist-language=HCL
+
+# Don't count these as code
+*.md linguist-documentation=true
+*.yml linguist-language=YAML
+*.yaml linguist-language=YAML
