@@ -1,0 +1,8 @@
+*.tfstate*
+.terraform/
+*.exe
+*.test
+.vscode/
+.DS_Store
+*.pem
+*.log

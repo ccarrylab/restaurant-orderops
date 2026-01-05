@@ -1,0 +1,1 @@
+{"dashboard": {"title": "Restaurant OrderOps SLO", "panels": [{"title": "Success Rate >95%", "type": "graph"}, {"title": "P95 Latency <200ms", "type": "graph"}]}}
