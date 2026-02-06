@@ -1,0 +1,62 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: restaurant-api-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: restaurant-api
+```
+
+**Key Features:**
+- **Minimum 2 pods** must always be available
+- **Prevents** Kubernetes from draining/evicting too many pods at once
+- **Protects** against voluntary disruptions (node maintenance, upgrades)
+
+**What it does:**
+
+❌ **Without PDB:**
+```
+Node maintenance → Kubernetes evicts all 3 pods → 💥 Service down!
+```
+
+✅ **With PDB (minAvailable: 2):**
+```
+Node maintenance → Kubernetes evicts 1 pod → 2 pods still serving traffic
+Wait for new pod → Healthy → Evict next pod → Always 2+ running
+```
+
+---
+
+## 🎯 Interview Talking Points
+
+### Ingress
+- "I use AWS ALB instead of NGINX because it's managed - no need to maintain ingress controllers"
+- "Target-type IP routes directly to pods, skipping the extra service hop - lower latency"
+- "ALB automatically handles SSL termination and integrates with ACM for certificates"
+- "Health checks ensure ALB only sends traffic to healthy pods"
+
+### PDB
+- "This is often forgotten but critical for production"
+- "Without PDB, a cluster upgrade could evict all pods simultaneously"
+- "minAvailable: 2 means we maintain at least 2 pods during any disruption"
+- "During chaos testing, even if we kill pods, PDB ensures minimum availability"
+
+---
+
+## 📊 Real-World Scenario
+
+**Dinner Rush + Node Maintenance:**
+```
+19:00 - Dinner rush starts
+     → HPA scales to 10 pods across 3 nodes
+     
+19:15 - Node1 needs maintenance
+     → PDB allows evicting pods from Node1
+     → But only after new pods are Ready on Node2/Node3
+     → minAvailable: 2 always maintained
+     
+19:20 - Node1 maintenance complete
+     → Pods redistribute
+     → Traffic continues uninterrupted
