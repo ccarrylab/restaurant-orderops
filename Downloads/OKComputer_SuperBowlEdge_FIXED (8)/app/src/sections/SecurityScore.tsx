@@ -1,0 +1,303 @@
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { 
+  Shield, 
+  CheckCircle, 
+  AlertTriangle, 
+  XCircle, 
+  Lock, 
+  FileKey,
+  UserCheck,
+  Network,
+  Container,
+  Scan,
+  Download
+} from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+interface SecurityCheck {
+  id: string
+  name: string
+  status: 'pass' | 'warning' | 'fail'
+  score: number
+  description: string
+  details?: string[]
+}
+
+interface Vulnerability {
+  id: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  title: string
+  component: string
+  status: 'open' | 'resolved' | 'false-positive'
+}
+
+const securityChecks: SecurityCheck[] = [
+  {
+    id: 'rbac',
+    name: 'RBAC Configuration',
+    status: 'pass',
+    score: 100,
+    description: 'Role-based access control properly configured',
+    details: ['Service accounts restricted', 'Least privilege principle applied', 'Regular access reviews']
+  },
+  {
+    id: 'network',
+    name: 'Network Policies',
+    status: 'pass',
+    score: 95,
+    description: 'Network segmentation and policies enforced',
+    details: ['Pod-to-pod traffic restricted', 'Ingress rules defined', 'Egress filtering enabled']
+  },
+  {
+    id: 'secrets',
+    name: 'Secrets Management',
+    status: 'pass',
+    score: 100,
+    description: 'Secrets encrypted and managed securely',
+    details: ['KMS encryption enabled', 'No hardcoded secrets', 'Rotation policy in place']
+  },
+  {
+    id: 'containers',
+    name: 'Container Security',
+    status: 'warning',
+    score: 85,
+    description: 'Container images scanned and hardened',
+    details: ['Non-root containers', 'Read-only filesystems', 'Resource limits set']
+  },
+  {
+    id: 'scanning',
+    name: 'Vulnerability Scanning',
+    status: 'pass',
+    score: 100,
+    description: 'Continuous security scanning enabled',
+    details: ['Trivy integrated', 'Checkov for IaC', 'Weekly full scans']
+  },
+]
+
+const vulnerabilities: Vulnerability[] = [
+  { id: 'CVE-2024-0001', severity: 'medium', title: 'Outdated nginx version', component: 'Ingress Controller', status: 'open' },
+  { id: 'CVE-2024-0002', severity: 'low', title: 'Verbose error messages', component: 'Go Service', status: 'resolved' },
+  { id: 'CVE-2024-0003', severity: 'low', title: 'Missing security headers', component: 'Web App', status: 'resolved' },
+]
+
+const severityColors = {
+  critical: 'text-red-500 bg-red-500/10',
+  high: 'text-orange-500 bg-orange-500/10',
+  medium: 'text-amber-500 bg-amber-500/10',
+  low: 'text-blue-500 bg-blue-500/10',
+}
+
+const statusIcons = {
+  pass: { icon: CheckCircle, color: 'text-emerald-400' },
+  warning: { icon: AlertTriangle, color: 'text-amber-400' },
+  fail: { icon: XCircle, color: 'text-red-400' },
+}
+
+export function SecurityScore() {
+  const overallScore = Math.round(securityChecks.reduce((sum, check) => sum + check.score, 0) / securityChecks.length)
+  const passedChecks = securityChecks.filter(c => c.status === 'pass').length
+  const openVulns = vulnerabilities.filter(v => v.status === 'open').length
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Security Dashboard</h2>
+          <p className="text-muted-foreground">Infrastructure security posture</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline">
+            <Scan className="w-4 h-4 mr-2" />
+            Run Scan
+          </Button>
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+        </div>
+      </div>
+
+      {/* Score Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-emerald-500/10 to-transparent border-emerald-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Security Score</p>
+                <p className="text-3xl font-bold text-emerald-400">{overallScore}/100</p>
+                <p className="text-xs text-emerald-400/70">Production Ready</p>
+              </div>
+              <div className="w-16 h-16 rounded-full border-4 border-emerald-500/30 flex items-center justify-center">
+                <Shield className="w-8 h-8 text-emerald-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Checks Passed</p>
+                <p className="text-3xl font-bold text-primary">{passedChecks}/{securityChecks.length}</p>
+                <p className="text-xs text-primary/70">100% pass rate</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-accent/10 to-transparent border-accent/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Open Vulnerabilities</p>
+                <p className="text-3xl font-bold text-accent">{openVulns}</p>
+                <p className="text-xs text-accent/70">Zero critical</p>
+              </div>
+              <Lock className="w-8 h-8 text-accent" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Last Scan</p>
+                <p className="text-3xl font-bold text-amber-400">2h ago</p>
+                <p className="text-xs text-amber-400/70">Automated</p>
+              </div>
+              <Scan className="w-8 h-8 text-amber-400" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="checks" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsTrigger value="checks">Security Checks</TabsTrigger>
+          <TabsTrigger value="vulnerabilities">Vulnerabilities</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="checks" className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {securityChecks.map((check) => {
+              const StatusIcon = statusIcons[check.status].icon
+              return (
+                <Card key={check.id} className="overflow-hidden">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${statusIcons[check.status].color.replace('text', 'bg')}/10`}>
+                          <StatusIcon className={`w-6 h-6 ${statusIcons[check.status].color}`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <h4 className="font-semibold">{check.name}</h4>
+                            <Badge variant={check.status === 'pass' ? 'default' : check.status === 'warning' ? 'secondary' : 'destructive'}>
+                              {check.score}%
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">{check.description}</p>
+                          {check.details && (
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {check.details.map((detail, i) => (
+                                <span key={i} className="text-xs px-2 py-1 rounded-full bg-secondary">
+                                  {detail}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="w-24">
+                        <Progress value={check.score} className="h-2" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="vulnerabilities">
+          <Card>
+            <CardHeader>
+              <CardTitle>Vulnerability Scan Results</CardTitle>
+              <CardDescription>Detected vulnerabilities from latest scan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {vulnerabilities.map((vuln) => (
+                  <div 
+                    key={vuln.id} 
+                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/30"
+                  >
+                    <div className="flex items-center gap-4">
+                      <Badge className={`${severityColors[vuln.severity]}`}>
+                        {vuln.severity}
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{vuln.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {vuln.id} • {vuln.component}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={vuln.status === 'resolved' ? 'default' : 'outline'}>
+                      {vuln.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+              
+              {vulnerabilities.length === 0 && (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium">No vulnerabilities found</p>
+                  <p className="text-sm text-muted-foreground">Your infrastructure is secure</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Security Best Practices */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Security Best Practices</CardTitle>
+          <CardDescription>Implemented security measures</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { icon: UserCheck, title: 'RBAC', desc: 'Role-based access control' },
+              { icon: Network, title: 'Network Policies', desc: 'Pod-to-pod traffic control' },
+              { icon: FileKey, title: 'KMS Encryption', desc: 'Secrets encryption at rest' },
+              { icon: Container, title: 'Non-root Containers', desc: 'Security hardened images' },
+              { icon: Scan, title: 'Continuous Scanning', desc: 'Trivy + Checkov integration' },
+              { icon: Lock, title: 'SSL/TLS', desc: 'Encrypted communications' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <item.icon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

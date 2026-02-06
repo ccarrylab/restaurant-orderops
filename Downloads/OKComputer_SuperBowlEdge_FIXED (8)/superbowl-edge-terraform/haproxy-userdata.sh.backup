@@ -1,0 +1,190 @@
+#!/bin/bash
+# =============================================================================
+# HAProxy User Data Script
+# =============================================================================
+
+set -e
+
+# Update system
+yum update -y
+
+# Install HAProxy and CloudWatch agent
+# Amazon Linux 2023 uses dnf and doesn't need amazon-linux-extras
+yum install -y haproxy wget
+
+# Install CloudWatch agent
+wget https://amazoncloudwatch-agent.s3.amazonaws.com/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+rpm -U ./amazon-cloudwatch-agent.rpm
+rm ./amazon-cloudwatch-agent.rpm
+
+# Configure HAProxy
+cat > /etc/haproxy/haproxy.cfg << 'EOF'
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    timeout connect 5000
+    timeout client 50000
+    timeout server 50000
+    errorfile 400 /etc/haproxy/errors/400.http
+    errorfile 403 /etc/haproxy/errors/403.http
+    errorfile 408 /etc/haproxy/errors/408.http
+    errorfile 500 /etc/haproxy/errors/500.http
+    errorfile 502 /etc/haproxy/errors/502.http
+    errorfile 503 /etc/haproxy/errors/503.http
+    errorfile 504 /etc/haproxy/errors/504.http
+
+# Stats page
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if TRUE
+
+# Frontend configuration
+frontend http_front
+    bind *:80
+    default_backend http_back
+
+    # Health check endpoint
+    acl is_health path /health
+    use_backend health_back if is_health
+
+# Backend for main application
+backend http_back
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    
+    # Backend servers (would be dynamically configured)
+    server backend1 127.0.0.1:8080 check inter 2000 rise 2 fall 3
+
+# Health check backend
+backend health_back
+    server local 127.0.0.1:8081
+EOF
+
+# Create a simple health check server
+cat > /usr/local/bin/health-server.py << 'EOF'
+#!/usr/bin/env python3
+import http.server
+import socketserver
+import json
+import datetime
+
+PORT = 8081
+
+class HealthHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            response = {
+                'status': 'healthy',
+                'service': 'haproxy-origin',
+                'timestamp': str(datetime.datetime.now())
+            }
+            self.wfile.write(json.dumps(response).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+with socketserver.TCPServer(("", PORT), HealthHandler) as httpd:
+    print(f"Health server running on port {PORT}")
+    httpd.serve_forever()
+EOF
+
+chmod +x /usr/local/bin/health-server.py
+
+# Create systemd service for health server
+cat > /etc/systemd/system/health-server.service << 'EOF'
+[Unit]
+Description=Health Check Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/health-server.py
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Configure CloudWatch agent
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'EOF'
+{
+  "metrics": {
+    "namespace": "SuperBowlEdge/HAProxy",
+    "metrics_collected": {
+      "cpu": {
+        "measurement": ["cpu_usage_idle", "cpu_usage_iowait", "cpu_usage_user", "cpu_usage_system"],
+        "metrics_collection_interval": 60,
+        "totalcpu": true
+      },
+      "disk": {
+        "measurement": ["used_percent"],
+        "metrics_collection_interval": 60,
+        "resources": ["*"]
+      },
+      "diskio": {
+        "measurement": ["io_time"],
+        "metrics_collection_interval": 60,
+        "resources": ["*"]
+      },
+      "mem": {
+        "measurement": ["mem_used_percent"],
+        "metrics_collection_interval": 60
+      },
+      "netstat": {
+        "measurement": ["tcp_established", "tcp_time_wait"],
+        "metrics_collection_interval": 60
+      },
+      "swap": {
+        "measurement": ["swap_used_percent"],
+        "metrics_collection_interval": 60
+      }
+    }
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/haproxy.log",
+            "log_group_name": "/aws/ec2/superbowl-edge-haproxy",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+EOF
+
+# Start services
+systemctl daemon-reload
+systemctl enable haproxy
+systemctl enable health-server
+systemctl enable amazon-cloudwatch-agent
+
+systemctl start haproxy
+systemctl start health-server
+systemctl start amazon-cloudwatch-agent
+
+echo "HAProxy setup complete!"
